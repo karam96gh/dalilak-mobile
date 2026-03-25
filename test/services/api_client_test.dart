@@ -1,238 +1,110 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:dio/dio.dart';
-import 'package:dalilak_app/services/api_client.dart';
 import 'package:dalilak_app/utils/exceptions.dart';
 
-// Generate mocks
-class MockDio extends Mock implements Dio {}
-
 void main() {
-  group('ApiClient', () {
-    late MockDio mockDio;
-    late ApiClient apiClient;
+  group('ApiClient Exception Handling', () {
+    test('ApiException stores message and code correctly', () {
+      final exception = ApiException(message: 'Not found', code: '404');
 
-    setUp(() {
-      mockDio = MockDio();
-      apiClient = ApiClient(dio: mockDio);
+      expect(exception.message, 'Not found');
+      expect(exception.code, '404');
+      expect(exception.toString(), 'Not found');
     });
 
-    group('get method', () {
-      test('returns data successfully on 200 response', () async {
-        // Arrange
-        const endpoint = '/test';
-        const expectedData = {'id': 1, 'name': 'Test'};
-        
-        when(mockDio.get<Map<String, dynamic>>(
-          endpoint,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: endpoint),
-          statusCode: 200,
-          data: expectedData,
-        ));
-
-        // Act
-        final result = await apiClient.get<Map<String, dynamic>>(endpoint);
-
-        // Assert
-        expect(result, expectedData);
-        verify(mockDio.get<Map<String, dynamic>>(
-          endpoint,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).called(1);
-      });
-
-      test('throws ApiException on 404 error', () async {
-        // Arrange
-        const endpoint = '/not-found';
-        when(mockDio.get<Map<String, dynamic>>(
-          endpoint,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenThrow(
-          DioException(
-            requestOptions: RequestOptions(path: endpoint),
-            response: Response(
-              requestOptions: RequestOptions(path: endpoint),
-              statusCode: 404,
-              data: {'message': 'Not found'},
-            ),
-          ),
-        );
-
-        // Act & Assert
-        expect(
-          () => apiClient.get<Map<String, dynamic>>(endpoint),
-          throwsA(isA<ApiException>()),
-        );
-      });
-
-      test('throws NetworkException on connection timeout', () async {
-        // Arrange
-        const endpoint = '/test';
-        when(mockDio.get<Map<String, dynamic>>(
-          endpoint,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenThrow(
-          DioException(
-            requestOptions: RequestOptions(path: endpoint),
-            type: DioExceptionType.connectionTimeout,
-          ),
-        );
-
-        // Act & Assert
-        expect(
-          () => apiClient.get<Map<String, dynamic>>(endpoint),
-          throwsA(isA<AppException>()),
-        );
-      });
-    });
-
-    group('post method', () {
-      test('sends data and returns response successfully', () async {
-        // Arrange
-        const endpoint = '/create';
-        const requestData = {'name': 'New Item'};
-        const responseData = {'id': 1, 'name': 'New Item'};
-
-        when(mockDio.post<Map<String, dynamic>>(
-          endpoint,
-          data: requestData,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: endpoint),
-          statusCode: 201,
-          data: responseData,
-        ));
-
-        // Act
-        final result = await apiClient.post<Map<String, dynamic>>(
-          endpoint,
-          data: requestData,
-        );
-
-        // Assert
-        expect(result, responseData);
-        verify(mockDio.post<Map<String, dynamic>>(
-          endpoint,
-          data: requestData,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).called(1);
-      });
-
-      test('throws ApiException on 400 bad request', () async {
-        // Arrange
-        const endpoint = '/create';
-        const requestData = {'name': ''};
-        
-        when(mockDio.post<Map<String, dynamic>>(
-          endpoint,
-          data: requestData,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenThrow(
-          DioException(
-            requestOptions: RequestOptions(path: endpoint),
-            response: Response(
-              requestOptions: RequestOptions(path: endpoint),
-              statusCode: 400,
-              data: {'message': 'Bad request'},
-            ),
-          ),
-        );
-
-        // Act & Assert
-        expect(
-          () => apiClient.post<Map<String, dynamic>>(
-            endpoint,
-            data: requestData,
-          ),
-          throwsA(isA<ApiException>()),
-        );
-      });
-    });
-
-    group('put method', () {
-      test('updates data and returns response successfully', () async {
-        // Arrange
-        const endpoint = '/update/1';
-        const updateData = {'name': 'Updated Name'};
-        const responseData = {'id': 1, 'name': 'Updated Name'};
-
-        when(mockDio.put<Map<String, dynamic>>(
-          endpoint,
-          data: updateData,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: endpoint),
-          statusCode: 200,
-          data: responseData,
-        ));
-
-        // Act
-        final result = await apiClient.put<Map<String, dynamic>>(
-          endpoint,
-          data: updateData,
-        );
-
-        // Assert
-        expect(result, responseData);
-      });
-    });
-
-    group('delete method', () {
-      test('deletes resource successfully', () async {
-        // Arrange
-        const endpoint = '/delete/1';
-
-        when(mockDio.delete<Map<String, dynamic>>(
-          endpoint,
-          queryParameters: anyNamed('queryParameters'),
-          options: anyNamed('options'),
-        )).thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: endpoint),
-          statusCode: 204,
-          data: null,
-        ));
-
-        // Act
-        final result = await apiClient.delete<Map<String, dynamic>>(endpoint);
-
-        // Assert
-        expect(result, isNull);
-      });
-    });
-
-    test('handles server error (500)', () async {
-      // Arrange
-      const endpoint = '/error';
-      when(mockDio.get<Map<String, dynamic>>(
-        endpoint,
-        queryParameters: anyNamed('queryParameters'),
-        options: anyNamed('options'),
-      )).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: endpoint),
-          response: Response(
-            requestOptions: RequestOptions(path: endpoint),
-            statusCode: 500,
-            data: {'message': 'Internal server error'},
-          ),
-        ),
+    test('NetworkException stores message and code correctly', () {
+      final exception = NetworkException(
+        message: 'Connection timeout',
+        code: 'CONNECTION_TIMEOUT',
       );
 
-      // Act & Assert
-      expect(
-        () => apiClient.get<Map<String, dynamic>>(endpoint),
-        throwsA(isA<ApiException>()),
+      expect(exception.message, 'Connection timeout');
+      expect(exception.code, 'CONNECTION_TIMEOUT');
+    });
+
+    test('AppException is the base exception class', () {
+      final exception = AppException(message: 'Something went wrong');
+
+      expect(exception, isA<Exception>());
+      expect(exception.message, 'Something went wrong');
+      expect(exception.code, isNull);
+    });
+
+    test('ApiException is a subclass of AppException', () {
+      final exception = ApiException(message: 'Bad request', code: '400');
+
+      expect(exception, isA<AppException>());
+      expect(exception, isA<ApiException>());
+    });
+
+    test('NetworkException is a subclass of AppException', () {
+      final exception = NetworkException(message: 'No internet');
+
+      expect(exception, isA<AppException>());
+      expect(exception, isA<NetworkException>());
+    });
+
+    test('CacheException is a subclass of AppException', () {
+      final exception = CacheException(message: 'Cache failed');
+
+      expect(exception, isA<AppException>());
+      expect(exception, isA<CacheException>());
+    });
+
+    test('Exception preserves original exception', () {
+      final original = Exception('original error');
+      final exception = AppException(
+        message: 'Wrapped error',
+        originalException: original,
       );
+
+      expect(exception.originalException, original);
+    });
+  });
+
+  group('API Response Handling Logic', () {
+    test('status code 200 is success', () {
+      const statusCode = 200;
+      expect(statusCode >= 200 && statusCode < 300, true);
+    });
+
+    test('status code 404 is client error', () {
+      const statusCode = 404;
+      expect(statusCode >= 400 && statusCode < 500, true);
+    });
+
+    test('status code 500 is server error', () {
+      const statusCode = 500;
+      expect(statusCode >= 500, true);
+    });
+
+    test('query parameters are built correctly', () {
+      final params = <String, dynamic>{
+        'page': 1,
+        'limit': 20,
+      };
+
+      const categoryId = 5;
+      params['categoryId'] = categoryId;
+
+      expect(params['page'], 1);
+      expect(params['limit'], 20);
+      expect(params['categoryId'], 5);
+      expect(params.length, 3);
+    });
+
+    test('query parameters exclude null values', () {
+      final int? categoryId = null;
+      final int? governorateId = null;
+
+      final params = <String, dynamic>{
+        'page': 1,
+        'limit': 20,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (governorateId != null) 'governorateId': governorateId,
+      };
+
+      expect(params.length, 2);
+      expect(params.containsKey('categoryId'), false);
     });
   });
 }

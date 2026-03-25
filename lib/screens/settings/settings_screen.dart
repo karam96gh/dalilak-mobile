@@ -32,7 +32,7 @@ class SettingsScreen extends ConsumerWidget {
             groupValue: currentLocale.languageCode,
             onChanged: (value) {
               if (value != null) {
-                ref.read(localeProvider.notifier).state = Locale(value);
+                ref.read(localeProvider.notifier).setLocale(value);
               }
             },
           ),
@@ -42,7 +42,7 @@ class SettingsScreen extends ConsumerWidget {
             groupValue: currentLocale.languageCode,
             onChanged: (value) {
               if (value != null) {
-                ref.read(localeProvider.notifier).state = Locale(value);
+                ref.read(localeProvider.notifier).setLocale(value);
               }
             },
           ),
@@ -62,7 +62,7 @@ class SettingsScreen extends ConsumerWidget {
             groupValue: currentTheme,
             onChanged: (value) {
               if (value != null) {
-                ref.read(themeModeProvider.notifier).state = value;
+                ref.read(themeModeProvider.notifier).setTheme(value);
               }
             },
           ),
@@ -72,7 +72,7 @@ class SettingsScreen extends ConsumerWidget {
             groupValue: currentTheme,
             onChanged: (value) {
               if (value != null) {
-                ref.read(themeModeProvider.notifier).state = value;
+                ref.read(themeModeProvider.notifier).setTheme(value);
               }
             },
           ),
@@ -82,7 +82,7 @@ class SettingsScreen extends ConsumerWidget {
             groupValue: currentTheme,
             onChanged: (value) {
               if (value != null) {
-                ref.read(themeModeProvider.notifier).state = value;
+                ref.read(themeModeProvider.notifier).setTheme(value);
               }
             },
           ),

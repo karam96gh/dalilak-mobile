@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/listing_model.dart';
+import '../../constants/app_constants.dart';
 import '../../providers/data_providers.dart';
 import '../../widgets/shimmer_skeletons.dart';
 
-class ListingDetailScreen extends ConsumerWidget {
+class ListingDetailScreen extends ConsumerStatefulWidget {
   final int listingId;
 
   const ListingDetailScreen({
@@ -15,7 +16,25 @@ class ListingDetailScreen extends ConsumerWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ListingDetailScreen> createState() =>
+      _ListingDetailScreenState();
+}
+
+class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
+  bool _viewRecorded = false;
+  int _currentImageIndex = 0;
+
+  int get listingId => widget.listingId;
+
+  void _recordView() {
+    if (_viewRecorded) return;
+    _viewRecorded = true;
+    final repository = ref.read(dalilakRepositoryProvider);
+    repository.recordListingView(listingId).catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final listingAsync = ref.watch(listingByIdProvider(listingId));
     final isFavorite = ref.watch(
       favoritesProvider.select((fav) => fav.contains(listingId)),
@@ -23,35 +42,32 @@ class ListingDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       body: listingAsync.when(
-        loading: () => const Scaffold(
-          body: ListingDetailSkeleton(),
-        ),
+        loading: () => const Scaffold(body: ListingDetailSkeleton()),
         error: (error, stack) => _buildErrorWidget(context, ref),
-        data: (listing) => _buildDetailWidget(
-          context,
-          ref,
-          listing,
-          isFavorite,
-        ),
+        data: (listing) {
+          _recordView();
+          return _buildDetailWidget(context, ref, listing, isFavorite);
+        },
       ),
     );
   }
 
   Widget _buildErrorWidget(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+            Icon(Icons.error_outline_rounded,
+                size: 72, color: theme.colorScheme.error),
             const SizedBox(height: 16),
-            const Text('حدث خطأ في تحميل البيانات'),
-            const SizedBox(height: 16),
+            Text('حدث خطأ في تحميل البيانات',
+                style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                ref.refresh(listingByIdProvider(listingId));
-              },
+              onPressed: () => ref.invalidate(listingByIdProvider(listingId)),
               icon: const Icon(Icons.refresh),
               label: const Text('إعادة محاولة'),
             ),
@@ -67,169 +83,324 @@ class ListingDetailScreen extends ConsumerWidget {
     Listing listing,
     bool isFavorite,
   ) {
+    final theme = Theme.of(context);
+
     return CustomScrollView(
       slivers: [
-        // App bar with images
-        _buildImageAppBar(context, ref, listing, isFavorite),
+        // ─── Image AppBar ───
+        SliverAppBar(
+          expandedHeight: 280,
+          pinned: true,
+          actions: [
+            // Favorite
+            Container(
+              margin: const EdgeInsets.only(left: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isFavorite ? Colors.red : Colors.white,
+                ),
+                onPressed: () {
+                  ref.read(favoritesProvider.notifier).toggleFavorite(listing.id);
+                },
+              ),
+            ),
+            // Share
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.share_rounded, color: Colors.white),
+                onPressed: () {
+                  final parts = <String>[listing.name];
+                  if (listing.description != null) parts.add(listing.description!);
+                  if (listing.phone != null) parts.add('هاتف: ${listing.phone}');
+                  Share.share(parts.join('\n\n'), subject: listing.name);
+                },
+              ),
+            ),
+          ],
+          flexibleSpace: FlexibleSpaceBar(
+            background: listing.images.isEmpty
+                ? Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(Icons.image_outlined,
+                        size: 64,
+                        color: theme.colorScheme.onSurface.withOpacity(0.15)),
+                  )
+                : Stack(
+                    children: [
+                      PageView.builder(
+                        itemCount: listing.images.length,
+                        onPageChanged: (i) =>
+                            setState(() => _currentImageIndex = i),
+                        itemBuilder: (context, index) {
+                          return Image.network(
+                            AppConstants.imageUrl(
+                                listing.images[index].imageUrl),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              child: const Icon(Icons.image_not_supported),
+                            ),
+                          );
+                        },
+                      ),
+                      // Image indicator
+                      if (listing.images.length > 1)
+                        Positioned(
+                          bottom: 12,
+                          left: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(listing.images.length, (i) {
+                              final active = i == _currentImageIndex;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: active ? 20 : 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      // Image count badge
+                      if (listing.images.length > 1)
+                        Positioned(
+                          top: 80,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              '${_currentImageIndex + 1}/${listing.images.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ),
 
-        // Content
+        // ─── Content ───
         SliverToBoxAdapter(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title and badges
+              // Title & Badges
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            listing.name,
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      listing.name,
+                      style: theme.textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 8),
-                    if (listing.isFeatured)
-                      Chip(
-                        label: const Text('مميز'),
-                        backgroundColor: Colors.orange[100],
-                        labelStyle: const TextStyle(color: Colors.orange),
-                      ),
                     const SizedBox(height: 12),
-                    // Info badges
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: [
+                        if (listing.isFeatured)
+                          _InfoChip(
+                            icon: Icons.star_rounded,
+                            label: 'مميز',
+                            color: theme.colorScheme.tertiary,
+                          ),
                         if (listing.category != null)
-                          Chip(
-                            label: Text(listing.category!.name),
+                          _InfoChip(
+                            icon: Icons.category_outlined,
+                            label: listing.category!.name,
+                            color: theme.colorScheme.primary,
                           ),
                         if (listing.governorate != null)
-                          Chip(
-                            label: Text(listing.governorate!.name),
+                          _InfoChip(
+                            icon: Icons.location_on_outlined,
+                            label: listing.governorate!.name,
+                            color: theme.colorScheme.secondary,
                           ),
-                        Chip(
-                          label: Text('${listing.viewCount} مشاهدة'),
+                        _InfoChip(
+                          icon: Icons.visibility_outlined,
+                          label: '${listing.viewCount} مشاهدة',
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+
               const Divider(),
 
               // Description
-              if (listing.description != null && listing.description!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'الوصف',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        listing.description!,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
+              if (listing.description != null &&
+                  listing.description!.isNotEmpty)
+                _DetailSection(
+                  icon: Icons.description_outlined,
+                  title: 'الوصف',
+                  child: Text(
+                    listing.description!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.6,
+                    ),
                   ),
                 ),
-              const Divider(),
 
               // Contact Information
               if (_hasContactInfo(listing))
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'معلومات الاتصال',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildContactButtons(listing),
-                    ],
-                  ),
+                _DetailSection(
+                  icon: Icons.phone_outlined,
+                  title: 'معلومات الاتصال',
+                  child: _buildContactButtons(listing, theme),
                 ),
-              const Divider(),
 
               // Address
               if (listing.address != null && listing.address!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16),
+                _DetailSection(
+                  icon: Icons.pin_drop_outlined,
+                  title: 'العنوان',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'العنوان',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(listing.address!),
+                      Text(listing.address!, style: theme.textTheme.bodyMedium),
+                      if (listing.locationLat != null && listing.locationLng != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: Material(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
+                                onTap: () => _launchUrl(
+                                  'https://www.google.com/maps/search/?api=1&query=${listing.locationLat},${listing.locationLng}',
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.map_rounded, size: 20, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'عرض على الخريطة',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
+                  ),
+                ),
+
+              // Map button (when no address but has coordinates)
+              if ((listing.address == null || listing.address!.isEmpty) &&
+                  listing.locationLat != null && listing.locationLng != null)
+                _DetailSection(
+                  icon: Icons.pin_drop_outlined,
+                  title: 'الموقع',
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Material(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        onTap: () => _launchUrl(
+                          'https://www.google.com/maps/search/?api=1&query=${listing.locationLat},${listing.locationLng}',
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.map_rounded, size: 20, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                'عرض على الخريطة',
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
 
               // Social Media
               if (_hasSocialMedia(listing))
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                _DetailSection(
+                  icon: Icons.share_outlined,
+                  title: 'تابعنا على',
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
                     children: [
-                      Text(
-                        'تابعنا على',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          if (listing.instagram != null)
-                            _buildSocialButton(
-                              'Instagram',
-                              Icons.link,
-                              Colors.pink,
-                              () => _launchUrl('https://instagram.com/${listing.instagram}'),
-                            ),
-                          if (listing.facebook != null)
-                            _buildSocialButton(
-                              'Facebook',
-                              Icons.link,
-                              Colors.blue,
-                              () => _launchUrl('https://facebook.com/${listing.facebook}'),
-                            ),
-                          if (listing.tiktok != null)
-                            _buildSocialButton(
-                              'TikTok',
-                              Icons.link,
-                              Colors.black,
-                              () => _launchUrl('https://tiktok.com/@${listing.tiktok}'),
-                            ),
-                        ],
-                      ),
+                      if (listing.instagram != null)
+                        _SocialButton(
+                          label: 'Instagram',
+                          color: const Color(0xFFE1306C),
+                          onTap: () => _launchUrl(
+                              'https://instagram.com/${listing.instagram}'),
+                        ),
+                      if (listing.facebook != null)
+                        _SocialButton(
+                          label: 'Facebook',
+                          color: const Color(0xFF1877F2),
+                          onTap: () => _launchUrl(
+                              'https://facebook.com/${listing.facebook}'),
+                        ),
+                      if (listing.tiktok != null)
+                        _SocialButton(
+                          label: 'TikTok',
+                          color: const Color(0xFFEE1D52),
+                          onTap: () => _launchUrl(
+                              'https://tiktok.com/@${listing.tiktok}'),
+                        ),
                     ],
                   ),
                 ),
-              const Divider(),
 
-              // Ratings Section
-              _buildRatingsSection(context, ref, listing),
-              const Divider(),
-
-              // Reviews Section
-              _buildReviewsSection(context, ref, listing),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -237,157 +408,42 @@ class ListingDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildImageAppBar(
-    BuildContext context,
-    WidgetRef ref,
-    Listing listing,
-    bool isFavorite,
-  ) {
-    return SliverAppBar(
-      expandedHeight: 250,
-      pinned: true,
-      actions: [
-        IconButton(
-          icon: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? Colors.red : null,
-          ),
-          onPressed: () {
-            ref.read(favoritesProvider.notifier).toggleFavorite(listing.id);
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.share),
-          onPressed: () {
-            Share.share(
-              'تحقق من ${listing.name} في دليلك\n\n${listing.description}\n\nهاتف: ${listing.phone}\nواتساب: ${listing.whatsapp}',
-              subject: listing.name,
-            );
-          },
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: listing.images.isEmpty
-            ? Container(color: Colors.grey[200])
-            : PageView.builder(
-                itemCount: listing.images.length,
-                itemBuilder: (context, index) {
-                  return Image.network(
-                    listing.images[index].imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image_not_supported),
-                      );
-                    },
-                  );
-                },
-              ),
-      ),
-    );
-  }
-
-  Widget _buildContactButtons(Listing listing) {
+  Widget _buildContactButtons(Listing listing, ThemeData theme) {
     return Column(
       children: [
         if (listing.phone != null)
-          _buildContactButton(
-            icon: Icons.phone,
+          _ContactTile(
+            icon: Icons.phone_rounded,
+            iconColor: Colors.green,
             label: 'اتصل',
             value: listing.phone!,
             onTap: () => _launchUrl('tel:${listing.phone}'),
           ),
-        if (listing.whatsapp != null) ...[
-          const SizedBox(height: 8),
-          _buildContactButton(
-            icon: Icons.message,
+        if (listing.whatsapp != null)
+          _ContactTile(
+            icon: Icons.chat_rounded,
+            iconColor: const Color(0xFF25D366),
             label: 'واتس آب',
             value: listing.whatsapp!,
             onTap: () => _launchUrl('https://wa.me/${listing.whatsapp}'),
           ),
-        ],
-        if (listing.email != null) ...[
-          const SizedBox(height: 8),
-          _buildContactButton(
-            icon: Icons.email,
+        if (listing.email != null)
+          _ContactTile(
+            icon: Icons.email_rounded,
+            iconColor: Colors.orange,
             label: 'بريد إلكتروني',
             value: listing.email!,
             onTap: () => _launchUrl('mailto:${listing.email}'),
           ),
-        ],
-        if (listing.website != null) ...[
-          const SizedBox(height: 8),
-          _buildContactButton(
-            icon: Icons.language,
+        if (listing.website != null)
+          _ContactTile(
+            icon: Icons.language_rounded,
+            iconColor: theme.colorScheme.primary,
             label: 'الموقع الإلكتروني',
             value: listing.website!,
             onTap: () => _launchUrl(listing.website!),
           ),
-        ],
       ],
-    );
-  }
-
-  Widget _buildContactButton({
-    required IconData icon,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 24),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return OutlinedButton.icon(
-      icon: Icon(icon),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-      ),
-      onPressed: onTap,
     );
   }
 
@@ -404,145 +460,136 @@ class ListingDetailScreen extends ConsumerWidget {
         listing.tiktok != null;
   }
 
-  Widget _buildRatingsSection(
-    BuildContext context,
-    WidgetRef ref,
-    Listing listing,
-  ) {
-    final ratingsAsync = ref.watch(listingRatingStatsProvider(listing.id));
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (_) {}
+  }
+}
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+// ─── Info Chip ─────────────────────────────────────────────────────
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
           Text(
-            'التقييمات',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          ratingsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => const Text('خطأ في تحميل التقييمات'),
-            data: (stats) => Column(
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      stats.averageRating.toStringAsFixed(1),
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: List.generate(
-                              5,
-                              (index) => Icon(
-                                index < stats.averageRating.toInt()
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: Colors.amber,
-                                size: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'من ${stats.totalReviews} تقييم',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildReviewsSection(
-    BuildContext context,
-    WidgetRef ref,
-    Listing listing,
-  ) {
-    final reviewsAsync = ref.watch(
-      listingReviewsProvider((
-        listingId: listing.id,
-        page: 1,
-        limit: 5,
-      )),
-    );
+// ─── Detail Section ────────────────────────────────────────────────
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+class _DetailSection extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  const _DetailSection({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Row(
             children: [
-              Text(
-                'التعليقات والمراجعات',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  // TODO: Navigate to full reviews page
-                },
-                child: const Text('عرض الكل'),
-              ),
+              Icon(icon, size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(title, style: theme.textTheme.titleMedium),
             ],
           ),
-          const SizedBox(height: 12),
-          reviewsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => const Text('خطأ في تحميل المراجعات'),
-            data: (reviewsResponse) => reviewsResponse.data.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'لا توجد مراجعات حتى الآن',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  )
-                : Column(
-                    children: reviewsResponse.data.take(3).map((review) {
-                      return _buildReviewCard(context, review);
-                    }).toList(),
-                  ),
-          ),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: child,
+        ),
+        const SizedBox(height: 8),
+        const Divider(),
+      ],
     );
   }
+}
 
-  Widget _buildReviewCard(BuildContext context, dynamic review) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+// ─── Contact Tile ──────────────────────────────────────────────────
+
+class _ContactTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _ContactTile({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: theme.colorScheme.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: review.userImage != null
-                      ? NetworkImage(review.userImage)
-                      : null,
-                  child: review.userImage == null
-                      ? Text(review.userName.substring(0, 1))
-                      : null,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -550,56 +597,66 @@ class ListingDetailScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        review.userName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
                       ),
-                      Row(
-                        children: [
-                          ...List.generate(
-                            5,
-                            (index) => Icon(
-                              index < review.rating
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              color: Colors.amber,
-                              size: 14,
-                            ),
-                          ),
-                          if (review.isVerifiedBuyer) ...[
-                            const SizedBox(width: 8),
-                            const Chip(
-                              label: Text('مشتري محقق'),
-                              labelStyle: TextStyle(fontSize: 10),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                            ),
-                          ],
-                        ],
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
+                Icon(Icons.arrow_back_ios_rounded,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withOpacity(0.3)),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(review.comment),
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Future<void> _launchUrl(String url) async {
-    try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
-      }
-    } catch (e) {
-      // Handle error
-    }
+// ─── Social Button ─────────────────────────────────────────────────
+
+class _SocialButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SocialButton({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

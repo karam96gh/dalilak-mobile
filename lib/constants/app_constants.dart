@@ -1,11 +1,18 @@
 // Constants for API endpoints and app configuration
 class AppConstants {
   // API Configuration
-  static const String apiBaseUrl = 'http://localhost:1996/api/v1';
+  static const String apiBaseUrl = 'http://217.76.53.136/dalilak/api/v1';
+  static const String serverBaseUrl = 'http://217.76.53.136/dalilak';
   static const String apiTimeout = '30000'; // milliseconds
 
+  /// Build full image URL from relative path (e.g. /uploads/image.jpg)
+  static String imageUrl(String path) {
+    if (path.startsWith('http')) return path;
+    return '$serverBaseUrl$path';
+  }
+
   // App Info
-  static const String appName = 'دليلك';
+  static const String appName = 'دليلك بموبايلك';
   static const String appVersion = '1.0.0';
 
   // Shared Preferences Keys

@@ -118,8 +118,6 @@ class MainNavigationShell extends StatefulWidget {
 }
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
-  int _selectedIndex = 0;
-
   static const List<String> _routes = [
     '/home',
     '/categories',
@@ -137,33 +135,119 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   ];
 
   static const List<IconData> _icons = [
-    Icons.home,
-    Icons.category,
-    Icons.search,
-    Icons.favorite,
-    Icons.settings,
+    Icons.home_rounded,
+    Icons.grid_view_rounded,
+    Icons.search_rounded,
+    Icons.favorite_rounded,
+    Icons.settings_rounded,
   ];
+
+  static const List<IconData> _iconsOutlined = [
+    Icons.home_outlined,
+    Icons.grid_view_outlined,
+    Icons.search_outlined,
+    Icons.favorite_outline_rounded,
+    Icons.settings_outlined,
+  ];
+
+  int _calculateSelectedIndex(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    final index = _routes.indexOf(location);
+    return index >= 0 ? index : 0;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = _calculateSelectedIndex(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(40),
-        child: const OfflineIndicator(),
+      body: Column(
+        children: [
+          const OfflineIndicator(),
+          Expanded(child: widget.child),
+        ],
       ),
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-          GoRouter.of(context).go(_routes[index]);
-        },
-        type: BottomNavigationBarType.fixed,
-        items: List.generate(
-          _labels.length,
-          (index) => BottomNavigationBarItem(
-            icon: Icon(_icons[index]),
-            label: _labels[index],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C192E) : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+          border: Border(
+            top: BorderSide(
+              color: isDark
+                  ? const Color(0xFF2E2A45)
+                  : const Color(0xFFEEEBF8),
+              width: 1,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              children: List.generate(_labels.length, (index) {
+                final isSelected = index == selectedIndex;
+                return Expanded(
+                  child: InkWell(
+                    onTap: () => GoRouter.of(context).go(_routes[index]),
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFF5C35C9).withOpacity(0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              isSelected
+                                  ? _icons[index]
+                                  : _iconsOutlined[index],
+                              color: isSelected
+                                  ? const Color(0xFF5C35C9)
+                                  : (isDark
+                                      ? const Color(0xFF6B6880)
+                                      : const Color(0xFF9E9BB8)),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _labels[index],
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? const Color(0xFF5C35C9)
+                                  : (isDark
+                                      ? const Color(0xFF6B6880)
+                                      : const Color(0xFF9E9BB8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       ),

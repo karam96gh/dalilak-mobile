@@ -5,6 +5,13 @@ import 'governorate_model.dart';
 part 'listing_model.freezed.dart';
 part 'listing_model.g.dart';
 
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 @freezed
 class ListingImage with _$ListingImage {
   const factory ListingImage({
@@ -33,8 +40,8 @@ class Listing with _$Listing {
     String? instagram,
     String? facebook,
     String? tiktok,
-    double? locationLat,
-    double? locationLng,
+    @JsonKey(fromJson: _toDouble) double? locationLat,
+    @JsonKey(fromJson: _toDouble) double? locationLng,
     String? address,
     @Default(false) bool isFeatured,
     @Default(true) bool isActive,

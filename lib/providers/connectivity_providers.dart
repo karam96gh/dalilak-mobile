@@ -3,8 +3,15 @@ import '../services/cache_service.dart';
 import '../services/connectivity_service.dart';
 
 // ============ CACHE SERVICE PROVIDER ============
+// Initialized instance set from main.dart
+late CacheService _initializedCacheService;
+
+void setCacheServiceInstance(CacheService service) {
+  _initializedCacheService = service;
+}
+
 final cacheServiceProvider = Provider<CacheService>((ref) {
-  return CacheService();
+  return _initializedCacheService;
 });
 
 // ============ CONNECTIVITY SERVICE PROVIDER ============

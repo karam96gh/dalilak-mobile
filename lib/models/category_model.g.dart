@@ -6,6 +6,18 @@ part of 'category_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_$CategoryCountImpl _$$CategoryCountImplFromJson(Map<String, dynamic> json) =>
+    _$CategoryCountImpl(
+      children: (json['children'] as num?)?.toInt() ?? 0,
+      listings: (json['listings'] as num?)?.toInt() ?? 0,
+    );
+
+Map<String, dynamic> _$$CategoryCountImplToJson(_$CategoryCountImpl instance) =>
+    <String, dynamic>{
+      'children': instance.children,
+      'listings': instance.listings,
+    };
+
 _$CategoryImpl _$$CategoryImplFromJson(Map<String, dynamic> json) =>
     _$CategoryImpl(
       id: (json['id'] as num).toInt(),
@@ -20,6 +32,9 @@ _$CategoryImpl _$$CategoryImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      count: json['_count'] == null
+          ? null
+          : CategoryCount.fromJson(json['_count'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$CategoryImplToJson(_$CategoryImpl instance) =>
@@ -33,4 +48,5 @@ Map<String, dynamic> _$$CategoryImplToJson(_$CategoryImpl instance) =>
       'order': instance.order,
       'isActive': instance.isActive,
       'children': instance.children,
+      '_count': instance.count,
     };

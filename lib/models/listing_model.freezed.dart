@@ -227,7 +227,9 @@ mixin _$Listing {
   String? get instagram => throw _privateConstructorUsedError;
   String? get facebook => throw _privateConstructorUsedError;
   String? get tiktok => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _toDouble)
   double? get locationLat => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _toDouble)
   double? get locationLng => throw _privateConstructorUsedError;
   String? get address => throw _privateConstructorUsedError;
   bool get isFeatured => throw _privateConstructorUsedError;
@@ -262,8 +264,8 @@ abstract class $ListingCopyWith<$Res> {
       String? instagram,
       String? facebook,
       String? tiktok,
-      double? locationLat,
-      double? locationLng,
+      @JsonKey(fromJson: _toDouble) double? locationLat,
+      @JsonKey(fromJson: _toDouble) double? locationLng,
       String? address,
       bool isFeatured,
       bool isActive,
@@ -456,8 +458,8 @@ abstract class _$$ListingImplCopyWith<$Res> implements $ListingCopyWith<$Res> {
       String? instagram,
       String? facebook,
       String? tiktok,
-      double? locationLat,
-      double? locationLng,
+      @JsonKey(fromJson: _toDouble) double? locationLat,
+      @JsonKey(fromJson: _toDouble) double? locationLng,
       String? address,
       bool isFeatured,
       bool isActive,
@@ -622,8 +624,8 @@ class _$ListingImpl implements _Listing {
       this.instagram,
       this.facebook,
       this.tiktok,
-      this.locationLat,
-      this.locationLng,
+      @JsonKey(fromJson: _toDouble) this.locationLat,
+      @JsonKey(fromJson: _toDouble) this.locationLng,
       this.address,
       this.isFeatured = false,
       this.isActive = true,
@@ -663,8 +665,10 @@ class _$ListingImpl implements _Listing {
   @override
   final String? tiktok;
   @override
+  @JsonKey(fromJson: _toDouble)
   final double? locationLat;
   @override
+  @JsonKey(fromJson: _toDouble)
   final double? locationLng;
   @override
   final String? address;
@@ -802,8 +806,8 @@ abstract class _Listing implements Listing {
       final String? instagram,
       final String? facebook,
       final String? tiktok,
-      final double? locationLat,
-      final double? locationLng,
+      @JsonKey(fromJson: _toDouble) final double? locationLat,
+      @JsonKey(fromJson: _toDouble) final double? locationLng,
       final String? address,
       final bool isFeatured,
       final bool isActive,
@@ -841,8 +845,10 @@ abstract class _Listing implements Listing {
   @override
   String? get tiktok;
   @override
+  @JsonKey(fromJson: _toDouble)
   double? get locationLat;
   @override
+  @JsonKey(fromJson: _toDouble)
   double? get locationLng;
   @override
   String? get address;

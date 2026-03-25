@@ -14,6 +14,163 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
+CategoryCount _$CategoryCountFromJson(Map<String, dynamic> json) {
+  return _CategoryCount.fromJson(json);
+}
+
+/// @nodoc
+mixin _$CategoryCount {
+  int get children => throw _privateConstructorUsedError;
+  int get listings => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $CategoryCountCopyWith<CategoryCount> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $CategoryCountCopyWith<$Res> {
+  factory $CategoryCountCopyWith(
+          CategoryCount value, $Res Function(CategoryCount) then) =
+      _$CategoryCountCopyWithImpl<$Res, CategoryCount>;
+  @useResult
+  $Res call({int children, int listings});
+}
+
+/// @nodoc
+class _$CategoryCountCopyWithImpl<$Res, $Val extends CategoryCount>
+    implements $CategoryCountCopyWith<$Res> {
+  _$CategoryCountCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? children = null,
+    Object? listings = null,
+  }) {
+    return _then(_value.copyWith(
+      children: null == children
+          ? _value.children
+          : children // ignore: cast_nullable_to_non_nullable
+              as int,
+      listings: null == listings
+          ? _value.listings
+          : listings // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$CategoryCountImplCopyWith<$Res>
+    implements $CategoryCountCopyWith<$Res> {
+  factory _$$CategoryCountImplCopyWith(
+          _$CategoryCountImpl value, $Res Function(_$CategoryCountImpl) then) =
+      __$$CategoryCountImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({int children, int listings});
+}
+
+/// @nodoc
+class __$$CategoryCountImplCopyWithImpl<$Res>
+    extends _$CategoryCountCopyWithImpl<$Res, _$CategoryCountImpl>
+    implements _$$CategoryCountImplCopyWith<$Res> {
+  __$$CategoryCountImplCopyWithImpl(
+      _$CategoryCountImpl _value, $Res Function(_$CategoryCountImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? children = null,
+    Object? listings = null,
+  }) {
+    return _then(_$CategoryCountImpl(
+      children: null == children
+          ? _value.children
+          : children // ignore: cast_nullable_to_non_nullable
+              as int,
+      listings: null == listings
+          ? _value.listings
+          : listings // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$CategoryCountImpl implements _CategoryCount {
+  const _$CategoryCountImpl({this.children = 0, this.listings = 0});
+
+  factory _$CategoryCountImpl.fromJson(Map<String, dynamic> json) =>
+      _$$CategoryCountImplFromJson(json);
+
+  @override
+  @JsonKey()
+  final int children;
+  @override
+  @JsonKey()
+  final int listings;
+
+  @override
+  String toString() {
+    return 'CategoryCount(children: $children, listings: $listings)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CategoryCountImpl &&
+            (identical(other.children, children) ||
+                other.children == children) &&
+            (identical(other.listings, listings) ||
+                other.listings == listings));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, children, listings);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CategoryCountImplCopyWith<_$CategoryCountImpl> get copyWith =>
+      __$$CategoryCountImplCopyWithImpl<_$CategoryCountImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$CategoryCountImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _CategoryCount implements CategoryCount {
+  const factory _CategoryCount({final int children, final int listings}) =
+      _$CategoryCountImpl;
+
+  factory _CategoryCount.fromJson(Map<String, dynamic> json) =
+      _$CategoryCountImpl.fromJson;
+
+  @override
+  int get children;
+  @override
+  int get listings;
+  @override
+  @JsonKey(ignore: true)
+  _$$CategoryCountImplCopyWith<_$CategoryCountImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
 Category _$CategoryFromJson(Map<String, dynamic> json) {
   return _Category.fromJson(json);
 }
@@ -28,7 +185,11 @@ mixin _$Category {
   int get level => throw _privateConstructorUsedError;
   int get order => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
-  List<Category> get children => throw _privateConstructorUsedError;
+  List<Category> get children =>
+      throw _privateConstructorUsedError; // Freezed uses constructor params; suppress analyzer target warning.
+// ignore: invalid_annotation_target
+  @JsonKey(name: '_count')
+  CategoryCount? get count => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -50,7 +211,10 @@ abstract class $CategoryCopyWith<$Res> {
       int level,
       int order,
       bool isActive,
-      List<Category> children});
+      List<Category> children,
+      @JsonKey(name: '_count') CategoryCount? count});
+
+  $CategoryCountCopyWith<$Res>? get count;
 }
 
 /// @nodoc
@@ -75,6 +239,7 @@ class _$CategoryCopyWithImpl<$Res, $Val extends Category>
     Object? order = null,
     Object? isActive = null,
     Object? children = null,
+    Object? count = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -113,7 +278,23 @@ class _$CategoryCopyWithImpl<$Res, $Val extends Category>
           ? _value.children
           : children // ignore: cast_nullable_to_non_nullable
               as List<Category>,
+      count: freezed == count
+          ? _value.count
+          : count // ignore: cast_nullable_to_non_nullable
+              as CategoryCount?,
     ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $CategoryCountCopyWith<$Res>? get count {
+    if (_value.count == null) {
+      return null;
+    }
+
+    return $CategoryCountCopyWith<$Res>(_value.count!, (value) {
+      return _then(_value.copyWith(count: value) as $Val);
+    });
   }
 }
 
@@ -134,7 +315,11 @@ abstract class _$$CategoryImplCopyWith<$Res>
       int level,
       int order,
       bool isActive,
-      List<Category> children});
+      List<Category> children,
+      @JsonKey(name: '_count') CategoryCount? count});
+
+  @override
+  $CategoryCountCopyWith<$Res>? get count;
 }
 
 /// @nodoc
@@ -157,6 +342,7 @@ class __$$CategoryImplCopyWithImpl<$Res>
     Object? order = null,
     Object? isActive = null,
     Object? children = null,
+    Object? count = freezed,
   }) {
     return _then(_$CategoryImpl(
       id: null == id
@@ -195,6 +381,10 @@ class __$$CategoryImplCopyWithImpl<$Res>
           ? _value._children
           : children // ignore: cast_nullable_to_non_nullable
               as List<Category>,
+      count: freezed == count
+          ? _value.count
+          : count // ignore: cast_nullable_to_non_nullable
+              as CategoryCount?,
     ));
   }
 }
@@ -211,7 +401,8 @@ class _$CategoryImpl implements _Category {
       this.level = 1,
       this.order = 0,
       this.isActive = true,
-      final List<Category> children = const []})
+      final List<Category> children = const [],
+      @JsonKey(name: '_count') this.count})
       : _children = children;
 
   factory _$CategoryImpl.fromJson(Map<String, dynamic> json) =>
@@ -245,9 +436,15 @@ class _$CategoryImpl implements _Category {
     return EqualUnmodifiableListView(_children);
   }
 
+// Freezed uses constructor params; suppress analyzer target warning.
+// ignore: invalid_annotation_target
+  @override
+  @JsonKey(name: '_count')
+  final CategoryCount? count;
+
   @override
   String toString() {
-    return 'Category(id: $id, name: $name, icon: $icon, image: $image, parentId: $parentId, level: $level, order: $order, isActive: $isActive, children: $children)';
+    return 'Category(id: $id, name: $name, icon: $icon, image: $image, parentId: $parentId, level: $level, order: $order, isActive: $isActive, children: $children, count: $count)';
   }
 
   @override
@@ -265,13 +462,24 @@ class _$CategoryImpl implements _Category {
             (identical(other.order, order) || other.order == order) &&
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
-            const DeepCollectionEquality().equals(other._children, _children));
+            const DeepCollectionEquality().equals(other._children, _children) &&
+            (identical(other.count, count) || other.count == count));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, icon, image, parentId,
-      level, order, isActive, const DeepCollectionEquality().hash(_children));
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      icon,
+      image,
+      parentId,
+      level,
+      order,
+      isActive,
+      const DeepCollectionEquality().hash(_children),
+      count);
 
   @JsonKey(ignore: true)
   @override
@@ -297,7 +505,8 @@ abstract class _Category implements Category {
       final int level,
       final int order,
       final bool isActive,
-      final List<Category> children}) = _$CategoryImpl;
+      final List<Category> children,
+      @JsonKey(name: '_count') final CategoryCount? count}) = _$CategoryImpl;
 
   factory _Category.fromJson(Map<String, dynamic> json) =
       _$CategoryImpl.fromJson;
@@ -320,6 +529,10 @@ abstract class _Category implements Category {
   bool get isActive;
   @override
   List<Category> get children;
+  @override // Freezed uses constructor params; suppress analyzer target warning.
+// ignore: invalid_annotation_target
+  @JsonKey(name: '_count')
+  CategoryCount? get count;
   @override
   @JsonKey(ignore: true)
   _$$CategoryImplCopyWith<_$CategoryImpl> get copyWith =>

@@ -4,7 +4,6 @@ import '../models/category_model.dart';
 import '../models/listing_model.dart';
 import '../models/notification_model.dart';
 import '../models/ad_model.dart';
-import '../models/review_model.dart';
 import '../models/api_response_model.dart';
 import '../utils/exceptions.dart';
 import 'api_client.dart';
@@ -69,6 +68,16 @@ class DalilakRepository {
     return Category.fromJson(response);
   }
 
+  Future<List<Category>> getCategoryChildren(int parentId) async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/categories/$parentId/children',
+      fromJson: (data) => data as List<dynamic>,
+    );
+    return response
+        .map((item) => Category.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   // ============ GOVERNORATES ============
   Future<List<Governorate>> getGovernorates() async {
     // Try to use cache first
@@ -109,6 +118,26 @@ class DalilakRepository {
   }
 
   // ============ LISTINGS ============
+  Future<List<Listing>> getFeaturedListings() async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/listings/featured',
+      fromJson: (data) => data as List<dynamic>,
+    );
+    return response
+        .map((item) => Listing.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<Listing>> getLatestListings() async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/listings/latest',
+      fromJson: (data) => data as List<dynamic>,
+    );
+    return response
+        .map((item) => Listing.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<PaginatedResponse<Listing>> getListings({
     int page = 1,
     int limit = 20,
@@ -116,16 +145,21 @@ class DalilakRepository {
     int? governorateId,
     bool? isFeatured,
   }) async {
-    // Try to use cache first
-    final cached = await _cacheService.getCachedListingsPaginated(page, limit);
-    if (cached != null) {
-      try {
-        final jsonData = jsonDecode(cached) as Map<String, dynamic>;
-        return PaginatedResponse.fromJson(
-          jsonData,
-          (item) => Listing.fromJson(item as Map<String, dynamic>),
-        );
-      } catch (_) {}
+    final hasFilters =
+        categoryId != null || governorateId != null || isFeatured != null;
+
+    // Try to use cache only when there are no filters
+    if (!hasFilters) {
+      final cached = await _cacheService.getCachedListingsPaginated(page, limit);
+      if (cached != null) {
+        try {
+          final jsonData = jsonDecode(cached) as Map<String, dynamic>;
+          return PaginatedResponse.fromJson(
+            jsonData,
+            (item) => Listing.fromJson(item as Map<String, dynamic>),
+          );
+        } catch (_) {}
+      }
     }
 
     // Check connectivity
@@ -143,7 +177,7 @@ class DalilakRepository {
         'limit': limit,
         if (categoryId != null) 'categoryId': categoryId,
         if (governorateId != null) 'governorateId': governorateId,
-        if (isFeatured != null) 'isFeatured': isFeatured,
+        if (isFeatured != null) 'featured': isFeatured,
       };
 
       final response = await _apiClient.get<Map<String, dynamic>>(
@@ -152,12 +186,14 @@ class DalilakRepository {
         fromJson: (data) => data as Map<String, dynamic>,
       );
 
-      // Cache as JSON string
-      await _cacheService.cacheListingsPaginated(
-        page,
-        limit,
-        jsonEncode(response),
-      );
+      // Cache as JSON string only for unfiltered listings
+      if (!hasFilters) {
+        await _cacheService.cacheListingsPaginated(
+          page,
+          limit,
+          jsonEncode(response),
+        );
+      }
 
       return PaginatedResponse.fromJson(
         response,
@@ -219,16 +255,20 @@ class DalilakRepository {
     int? categoryId,
     int? governorateId,
   }) async {
-    // Try to use cache first
-    final cached = await _cacheService.getCachedSearch(query, page);
-    if (cached != null) {
-      try {
-        final jsonData = jsonDecode(cached) as Map<String, dynamic>;
-        return PaginatedResponse.fromJson(
-          jsonData,
-          (item) => Listing.fromJson(item as Map<String, dynamic>),
-        );
-      } catch (_) {}
+    final hasFilters = categoryId != null || governorateId != null;
+
+    // Try to use cache first (only when no extra filters)
+    if (!hasFilters) {
+      final cached = await _cacheService.getCachedSearch(query, page);
+      if (cached != null) {
+        try {
+          final jsonData = jsonDecode(cached) as Map<String, dynamic>;
+          return PaginatedResponse.fromJson(
+            jsonData,
+            (item) => Listing.fromJson(item as Map<String, dynamic>),
+          );
+        } catch (_) {}
+      }
     }
 
     // Check connectivity
@@ -242,7 +282,7 @@ class DalilakRepository {
 
     try {
       final queryParams = {
-        'q': query,
+        'search': query,
         'page': page,
         'limit': limit,
         if (categoryId != null) 'categoryId': categoryId,
@@ -250,13 +290,15 @@ class DalilakRepository {
       };
 
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/search',
+        '/listings',
         queryParameters: queryParams,
         fromJson: (data) => data as Map<String, dynamic>,
       );
 
-      // Cache the search results
-      await _cacheService.cacheSearch(query, page, jsonEncode(response));
+      // Cache the search results only for plain query without filters
+      if (!hasFilters) {
+        await _cacheService.cacheSearch(query, page, jsonEncode(response));
+      }
 
       return PaginatedResponse.fromJson(
         response,
@@ -296,11 +338,12 @@ class DalilakRepository {
     }
 
     try {
-      final response = await _apiClient.get<List<dynamic>>(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         '/notifications',
-        fromJson: (data) => data as List<dynamic>,
+        fromJson: (data) => data as Map<String, dynamic>,
       );
-      final notifications = response
+      final list = (response['data'] as List<dynamic>?) ?? [];
+      final notifications = list
           .map((item) => Notification.fromJson(item as Map<String, dynamic>))
           .toList();
 
@@ -365,50 +408,4 @@ class DalilakRepository {
     );
   }
 
-  // ============ REVIEWS & RATINGS ============
-  Future<PaginatedResponse<Review>> getListingReviews({
-    required int listingId,
-    int page = 1,
-    int limit = 10,
-  }) async {
-    final queryParams = {
-      'page': page,
-      'limit': limit,
-    };
-
-    final response = await _apiClient.get<Map<String, dynamic>>(
-      '/listings/$listingId/reviews',
-      queryParameters: queryParams,
-      fromJson: (data) => data as Map<String, dynamic>,
-    );
-
-    return PaginatedResponse.fromJson(
-      response,
-      (item) => Review.fromJson(item as Map<String, dynamic>),
-    );
-  }
-
-  Future<RatingStats> getListingRatingStats(int listingId) async {
-    final response = await _apiClient.get<Map<String, dynamic>>(
-      '/listings/$listingId/ratings',
-      fromJson: (data) => data as Map<String, dynamic>,
-    );
-    return RatingStats.fromJson(response);
-  }
-
-  Future<Review> submitReview({
-    required int listingId,
-    required int rating,
-    required String comment,
-  }) async {
-    final response = await _apiClient.post<Map<String, dynamic>>(
-      '/listings/$listingId/reviews',
-      data: {
-        'rating': rating,
-        'comment': comment,
-      },
-      fromJson: (data) => data as Map<String, dynamic>,
-    );
-    return Review.fromJson(response);
-  }
 }

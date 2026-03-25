@@ -5,7 +5,6 @@ import '../models/category_model.dart';
 import '../models/listing_model.dart';
 import '../models/notification_model.dart';
 import '../models/ad_model.dart';
-import '../models/review_model.dart';
 import '../models/api_response_model.dart';
 import '../services/api_client.dart';
 import '../services/dalilak_repository.dart';
@@ -37,6 +36,12 @@ final categoryByIdProvider =
   return repository.getCategoryById(id);
 });
 
+final categoryChildrenProvider =
+    FutureProvider.family<List<Category>, int>((ref, parentId) async {
+  final repository = ref.watch(dalilakRepositoryProvider);
+  return repository.getCategoryChildren(parentId);
+});
+
 // ============ GOVERNORATES ============
 final governoratesProvider = FutureProvider<List<Governorate>>((ref) async {
   final repository = ref.watch(dalilakRepositoryProvider);
@@ -44,6 +49,16 @@ final governoratesProvider = FutureProvider<List<Governorate>>((ref) async {
 });
 
 // ============ LISTINGS ============
+final featuredListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final repository = ref.watch(dalilakRepositoryProvider);
+  return repository.getFeaturedListings();
+});
+
+final latestListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final repository = ref.watch(dalilakRepositoryProvider);
+  return repository.getLatestListings();
+});
+
 final listingsProvider = FutureProvider.family<
     PaginatedResponse<Listing>,
     ({int page, int limit, int? categoryId, int? governorateId})>((ref, params) async {
@@ -135,40 +150,20 @@ class FavoritesNotifier extends StateNotifier<List<int>> {
   bool isFavorite(int listingId) => state.contains(listingId);
 }
 
-// ============ REVIEWS & RATINGS ============
-final listingReviewsProvider = FutureProvider.family<
-    PaginatedResponse<Review>,
-    ({int listingId, int page, int limit})>((ref, params) async {
-  final repository = ref.watch(dalilakRepositoryProvider);
-  return repository.getListingReviews(
-    listingId: params.listingId,
-    page: params.page,
-    limit: params.limit,
-  );
-});
+// ============ FAVORITE LISTINGS ============
+final favoriteListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final favoriteIds = ref.watch(favoritesProvider);
+  if (favoriteIds.isEmpty) return [];
 
-final listingRatingStatsProvider =
-    FutureProvider.family<RatingStats, int>((ref, listingId) async {
   final repository = ref.watch(dalilakRepositoryProvider);
-  return repository.getListingRatingStats(listingId);
-});
-
-final submitReviewProvider = FutureProvider.family<
-    Review,
-    ({int listingId, int rating, String comment})>((ref, params) async {
-  final repository = ref.watch(dalilakRepositoryProvider);
-  final review = await repository.submitReview(
-    listingId: params.listingId,
-    rating: params.rating,
-    comment: params.comment,
-  );
-  // Invalidate reviews cache after submit
-  ref.invalidate(
-    listingReviewsProvider((
-      listingId: params.listingId,
-      page: 1,
-      limit: 10,
-    )),
-  );
-  return review;
+  final listings = <Listing>[];
+  for (final id in favoriteIds) {
+    try {
+      final listing = await repository.getListingById(id);
+      listings.add(listing);
+    } catch (_) {
+      // Skip listings that fail to load
+    }
+  }
+  return listings;
 });

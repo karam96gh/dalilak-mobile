@@ -49,14 +49,18 @@ class PaginatedResponse<T> {
     Map<String, dynamic> json,
     T Function(Object?)? fromJson,
   ) {
+    // After interceptor unwrap, format is: {data: [...], meta: {page, limit, total, totalPages}}
+    final meta = json['meta'] as Map<String, dynamic>?;
+    final dataList = json['data'] as List? ?? [];
+
     return PaginatedResponse(
-      success: json['success'] as bool,
-      data: (json['data'] as List)
+      success: json['success'] as bool? ?? true,
+      data: dataList
           .map((item) => fromJson != null ? fromJson(item) : item as T)
           .toList(),
-      total: json['total'] as int,
-      page: json['page'] as int,
-      limit: json['limit'] as int,
+      total: meta?['total'] as int? ?? json['total'] as int? ?? 0,
+      page: meta?['page'] as int? ?? json['page'] as int? ?? 1,
+      limit: meta?['limit'] as int? ?? json['limit'] as int? ?? 20,
       message: json['message'] as String?,
     );
   }

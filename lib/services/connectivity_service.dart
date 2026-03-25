@@ -7,26 +7,23 @@ class ConnectivityService {
   Future<bool> isConnected() async {
     try {
       final result = await _connectivity.checkConnectivity();
+      if (result is List) {
+        return (result as List).any((r) => r != ConnectivityResult.none);
+      }
       return result != ConnectivityResult.none;
     } catch (_) {
-      return false;
+      // If connectivity check fails, assume connected and let API handle errors
+      return true;
     }
   }
 
   /// Get stream of connectivity changes
   Stream<bool> get onConnectivityChanged {
     return _connectivity.onConnectivityChanged.map((result) {
+      if (result is List) {
+        return (result as List).any((r) => r != ConnectivityResult.none);
+      }
       return result != ConnectivityResult.none;
     });
-  }
-
-  /// Check specific connection type
-  Future<ConnectivityResult?> getConnectionType() async {
-    try {
-      final result = await _connectivity.checkConnectivity();
-      return result != ConnectivityResult.none ? result : null;
-    } catch (_) {
-      return null;
-    }
   }
 }

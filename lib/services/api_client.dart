@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import '../utils/exceptions.dart';
 
@@ -106,8 +107,20 @@ class ApiClient {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) {
-    // Add auth token if needed
-    // options.headers['Authorization'] = 'Bearer $token';
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════');
+      debugPrint('║ REQUEST: ${options.method} ${options.uri}');
+      debugPrint('╠══════════════════════════════════════════════════════════');
+      if (options.queryParameters.isNotEmpty) {
+        debugPrint('║ Query Params: ${options.queryParameters}');
+      }
+      if (options.data != null) {
+        debugPrint('║ Body: ${options.data}');
+      }
+      debugPrint('║ Headers: ${options.headers}');
+      debugPrint('╚══════════════════════════════════════════════════════════');
+    }
     handler.next(options);
   }
 
@@ -115,6 +128,39 @@ class ApiClient {
     Response response,
     ResponseInterceptorHandler handler,
   ) {
+    final uri = response.requestOptions.uri;
+    final method = response.requestOptions.method;
+    final statusCode = response.statusCode;
+
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════');
+      debugPrint('║ RESPONSE: $method $uri');
+      debugPrint('╠══════════════════════════════════════════════════════════');
+      debugPrint('║ Status Code: $statusCode');
+      debugPrint('║ Raw Data Type: ${response.data.runtimeType}');
+      debugPrint('║ Raw Data: ${_truncate(response.data.toString(), 500)}');
+    }
+
+    // Unwrap API response {success, data, meta}
+    if (response.data is Map && response.data['success'] == true) {
+      if (response.data['meta'] != null) {
+        if (kDebugMode) {
+          debugPrint('║ Meta: ${response.data['meta']}');
+        }
+        response.data = {
+          'data': response.data['data'],
+          'meta': response.data['meta'],
+        };
+      } else {
+        response.data = response.data['data'];
+      }
+    }
+    if (kDebugMode) {
+      debugPrint('║ Unwrapped Type: ${response.data.runtimeType}');
+      debugPrint('║ Unwrapped Data: ${_truncate(response.data.toString(), 500)}');
+      debugPrint('╚══════════════════════════════════════════════════════════');
+    }
     handler.next(response);
   }
 
@@ -122,7 +168,25 @@ class ApiClient {
     DioException e,
     ErrorInterceptorHandler handler,
   ) async {
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════');
+      debugPrint('║ ERROR: ${e.requestOptions.method} ${e.requestOptions.uri}');
+      debugPrint('╠══════════════════════════════════════════════════════════');
+      debugPrint('║ Type: ${e.type}');
+      debugPrint('║ Message: ${e.message}');
+      if (e.response != null) {
+        debugPrint('║ Status Code: ${e.response?.statusCode}');
+        debugPrint('║ Response: ${_truncate(e.response?.data.toString() ?? '', 500)}');
+      }
+      debugPrint('╚══════════════════════════════════════════════════════════');
+    }
     handler.next(e);
+  }
+
+  String _truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}... [truncated]';
   }
 
   AppException _handleError(DioException error) {

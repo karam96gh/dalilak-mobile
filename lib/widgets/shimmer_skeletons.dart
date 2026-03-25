@@ -312,62 +312,6 @@ class HorizontalListSkeleton extends StatelessWidget {
   }
 }
 
-/// Skeleton for review/rating card
-class ReviewSkeleton extends StatelessWidget {
-  const ReviewSkeleton({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ShimmerSkeleton(
-                width: 40,
-                height: 40,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShimmerSkeleton(
-                      width: 150,
-                      height: 14,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    SizedBox(height: 4),
-                    ShimmerSkeleton(
-                      width: 100,
-                      height: 12,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          ShimmerSkeleton(
-            width: double.infinity,
-            height: 12,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          SizedBox(height: 8),
-          ShimmerSkeleton(
-            width: 250,
-            height: 12,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Skeleton for ad carousel
 class AdCarouselSkeleton extends StatelessWidget {
