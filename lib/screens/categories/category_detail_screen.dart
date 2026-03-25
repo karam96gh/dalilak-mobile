@@ -179,12 +179,11 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                   ),
                   error: (_, __) => const SizedBox(height: 52),
                   data: (category) {
-                    if (category.children == null ||
-                        category.children!.isEmpty) {
+                    if (category.children.isEmpty) {
                       return const SizedBox(height: 0);
                     }
                     return _SubcategoryTabs(
-                      subcategories: category.children!,
+                      subcategories: category.children,
                       selectedId: _selectedSubcategoryId,
                       onSelected: (id) {
                         setState(() {
